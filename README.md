@@ -134,8 +134,8 @@ This file contains credentials and configuration for running Step Functions loca
 ```text
 AWS_DEFAULT_REGION=us-east-1
 LAMBDA_ENDPOINT=http://host.docker.internal:3001
-AWS_ACCESS_KEY_ID=AKIATP3BOXG36USHJEPQ
-AWS_SECRET_ACCESS_KEY=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
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
 ```
 
 ---
