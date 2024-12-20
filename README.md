@@ -1,14 +1,35 @@
-# AWS-Step-Functions-Locally
-Download AWS SAM 
-sam local start-lambda 
-optional: sam local start-lambda --profile XXXX   (if need to start with specific AWS credentials profile)
-necessary template.yaml
-Handler can be found when using Mock Test Lambda Tool in serverless.template
-CodeUri is a directory where lambda functions are compiled into .dll
-e.g. 
+# AWS Step Functions Locally
 
+This guide explains how to set up and run AWS Step Functions locally using AWS SAM (Serverless Application Model) and Docker.
 
+---
 
+## Prerequisites
+
+- Install **AWS SAM CLI** ([Installation Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html)).
+- Docker installed and running on your system.
+
+---
+
+## Steps to Run AWS Step Functions Locally
+
+### 1. Start the Lambda Function Locally
+
+Run the following command to start the Lambda function locally:
+```bash
+sam local start-lambda
+```
+
+If you need to specify a specific AWS credentials profile, use:
+```bash
+sam local start-lambda --profile <YOUR_PROFILE>
+```
+
+### 2. Create the `template.yaml`
+
+The `template.yaml` file is required by AWS SAM to define your serverless resources. Below is an example configuration:
+
+```yaml
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Resources:
@@ -17,33 +38,33 @@ Resources:
     Properties:
       Handler: zmph-sys-xperi.Functions::zmph_sys_xperi.Functions.Functions_InitiateUpload_Generated::InitiateUpload
       Runtime: dotnet8
-      CodeUri: C:/Users/MarcinCzubala/RiderProjects/zmph-sys-xperi/src/zmph-sys-xperi.Functions/bin/Debug/net8.0
+      CodeUri: <PATH_TO_YOUR_DLL>
       Timeout: 30
-      
+  
   CalculateByteRangesLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: zmph-sys-xperi.Functions::zmph_sys_xperi.Functions.Functions_CalculateByteRanges_Generated::CalculateByteRanges
       Runtime: dotnet8
-      CodeUri: C:/Users/MarcinCzubala/RiderProjects/zmph-sys-xperi/src/zmph-sys-xperi.Functions/bin/Debug/net8.0
+      CodeUri: <PATH_TO_YOUR_DLL>
       Timeout: 30
-          
+
   UploadPartLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: zmph-sys-xperi.Functions::zmph_sys_xperi.Functions.Functions_UploadPart_Generated::UploadPart
       Runtime: dotnet8
-      CodeUri: C:/Users/MarcinCzubala/RiderProjects/zmph-sys-xperi/src/zmph-sys-xperi.Functions/bin/Debug/net8.0
+      CodeUri: <PATH_TO_YOUR_DLL>
       Timeout: 30
-          
+
   CompleteUploadLambda:
     Type: AWS::Serverless::Function
     Properties:
       Handler: zmph-sys-xperi.Functions::zmph_sys_xperi.Functions.Functions_CompleteUpload_Generated::CompleteUpload
       Runtime: dotnet8
-      CodeUri: C:/Users/MarcinCzubala/RiderProjects/zmph-sys-xperi/src/zmph-sys-xperi.Functions/bin/Debug/net8.0
+      CodeUri: <PATH_TO_YOUR_DLL>
       Timeout: 30
-          
+
   MultipartUploadStateMachine:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -94,24 +115,44 @@ Resources:
             }
           }
         }
-      RoleArn: arn:aws:iam::960515033542:role/sofomo_lukasz
-      
+      RoleArn: <YOUR_ROLE_ARN>
+```
 
+Replace `<PATH_TO_YOUR_DLL>` and `<YOUR_ROLE_ARN>` with your respective paths and role ARN.
 
-Step functions local 
+---
+
+### 3. Run Step Functions Locally
+
+Start AWS Step Functions locally using Docker:
+```bash
 docker run -p 8083:8083 --env-file aws-stepfunctions-local-credentials.txt amazon/aws-stepfunctions-local
+```
 
-need to create aws-stepfunctions-local-credentials.txt
-e.g.
+#### Create `aws-stepfunctions-local-credentials.txt`
+This file contains credentials and configuration for running Step Functions locally. Example:
+```text
 AWS_DEFAULT_REGION=us-east-1
 LAMBDA_ENDPOINT=http://host.docker.internal:3001
-AWS_ACCESS_KEY_ID=AKIATP3BOXG36USHJEPQ"
-AWS_SECRET_ACCESS_KEY="0aAjcOmsMDL8eHElLDdLNp2gaQxrcn4JvByrwJQl"
+AWS_ACCESS_KEY_ID=AKIATP3BOXG36USHJEPQ
+AWS_SECRET_ACCESS_KEY=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
+```
 
-create step function
-aws stepfunctions create-state-machine --definition file://state-machine.json --name "MultipartUploadStateMachine" --role-arn "arn:aws:iam::123456789012:role/DummyRole" --endpoint-url http://localhost:8083
+---
 
-state-machine.json example:
+### 4. Create a State Machine
+
+Run the following command to create a Step Functions state machine locally:
+```bash
+aws stepfunctions create-state-machine \
+  --definition file://state-machine.json \
+  --name "MultipartUploadStateMachine" \
+  --role-arn "arn:aws:iam::123456789012:role/DummyRole" \
+  --endpoint-url http://localhost:8083
+```
+
+#### Example `state-machine.json`
+```json
 {
   "Comment": "Step Function for multipart upload",
   "StartAt": "InitiateUpload",
@@ -131,14 +172,14 @@ state-machine.json example:
     "UploadParts": {
       "Type": "Map",
       "ItemsPath": "$.byteRanges",
-	  "Parameters": {
-    "UploadId.$": "$.initiateResponse.UploadId",
-    "Bucket.$": "$.initiateResponse.BucketName",
-    "Key.$": "$.initiateResponse.Key",
-    "PartNumber.$": "$$.Map.Item.Value.PartNumber",
-    "Start.$": "$$.Map.Item.Value.Start",
-    "End.$": "$$.Map.Item.Value.End"
-  },
+      "Parameters": {
+        "UploadId.$": "$.initiateResponse.UploadId",
+        "Bucket.$": "$.initiateResponse.BucketName",
+        "Key.$": "$.initiateResponse.Key",
+        "PartNumber.$": "$$.Map.Item.Value.PartNumber",
+        "Start.$": "$$.Map.Item.Value.Start",
+        "End.$": "$$.Map.Item.Value.End"
+      },
       "Iterator": {
         "StartAt": "UploadPart",
         "States": {
@@ -166,8 +207,16 @@ state-machine.json example:
     }
   }
 }
+```
 
+---
 
-start step function
-aws stepfunctions start-execution --state-machine-arn "arn:aws:states:us-east-1:123456789012:stateMachine:MultipartUploadStateMachine" --endpoint-url http://localhost:8083
+### 5. Start the State Machine
+
+To execute the state machine, use:
+```bash
+aws stepfunctions start-execution \
+  --state-machine-arn "arn:aws:states:us-east-1:123456789012:stateMachine:MultipartUploadStateMachine" \
+  --endpoint-url http://localhost:8083
+```
 
